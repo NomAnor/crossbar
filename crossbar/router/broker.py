@@ -313,6 +313,9 @@ class Broker(object):
                 #
                 reply = message.Error(message.Subscribe.MESSAGE_TYPE, subscribe.request, ApplicationError.NOT_AUTHORIZED, [u"session is not authorized to subscribe to topic '{0}'".format(subscribe.topic)])
 
+                # send out reply to subscribe requestor
+                #
+                session._transport.send(reply)
             else:
                 # ok, session authorized to subscribe. now get the subscription
                 #
@@ -320,6 +323,14 @@ class Broker(object):
 
                 if not was_already_subscribed:
                     self._session_to_subscriptions[session].add(subscription)
+
+                # acknowledge subscribe with subscription ID
+                #
+                reply = message.Subscribed(subscribe.request, subscription.id)
+
+                # send out reply to subscribe requestor
+                #
+                session._transport.send(reply)
 
                 # publish WAMP meta events
                 #
@@ -336,14 +347,6 @@ class Broker(object):
                             service_session.publish(u'wamp.subscription.on_create', session._session_id, subscription_details)
                         if not was_already_subscribed:
                             service_session.publish(u'wamp.subscription.on_subscribe', session._session_id, subscription.id)
-
-                # acknowledge subscribe with subscription ID
-                #
-                reply = message.Subscribed(subscribe.request, subscription.id)
-
-            # send out reply to subscribe requestor
-            #
-            session._transport.send(reply)
 
         def on_authorize_error(err):
             """
